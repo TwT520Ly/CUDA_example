@@ -1,0 +1,7 @@
+# build cache 
+build/
+cmake-build-debug/
+
+# IDE cache
+.idea/
+
