@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 #define MAX_THREAD 512
+#define MAX_BLOCK 64
 
 __global__ void add(int a, int b, int *c) {
     *c = a + b;
@@ -57,12 +58,13 @@ bool initCUDA() {
 __global__ static void sumOfSquares(int* num, int* result, int DATA_SIZE) {
     // 获取线程编号
     const int tid = threadIdx.x;
+    const int bid = blockIdx.x;
 
     int sum = 0;
-    for (int i=tid; i< DATA_SIZE; i+=MAX_THREAD) {
+    for (int i=bid * MAX_THREAD + tid; i< DATA_SIZE; i += MAX_THREAD * MAX_BLOCK) {
         sum += num[i] * num[i] * num[i];
     }
-    result[tid] = sum;
+    result[tid + bid * MAX_THREAD] = sum;
 }
 
 int sumOfSquares_gpu(int* data, int DATA_SIZE) {
@@ -70,7 +72,7 @@ int sumOfSquares_gpu(int* data, int DATA_SIZE) {
     int* result;
 
     cudaMalloc((void**)&gpudata, sizeof(int) * DATA_SIZE);
-    cudaMalloc((void**)&result, sizeof(int) * MAX_THREAD);
+    cudaMalloc((void**)&result, sizeof(int) * MAX_THREAD * MAX_BLOCK);
 
     cudaMemcpy(gpudata, data, sizeof(int) * DATA_SIZE, cudaMemcpyHostToDevice);
 
@@ -80,7 +82,18 @@ int sumOfSquares_gpu(int* data, int DATA_SIZE) {
     cudaEventCreate(&stop);
 
     cudaEventRecord(start, 0);
-    sumOfSquares<<<1, MAX_THREAD, 0>>>(gpudata, result, DATA_SIZE);
+
+    sumOfSquares<<<MAX_BLOCK, MAX_THREAD, 0>>>(gpudata, result, DATA_SIZE);
+
+    int sum_gpu[MAX_THREAD * MAX_BLOCK];
+
+    cudaMemcpy(&sum_gpu, result, sizeof(int) * MAX_THREAD * MAX_BLOCK, cudaMemcpyDeviceToHost);
+
+    int sum = 0;
+    for (int i=0; i<MAX_THREAD * MAX_BLOCK; i++) {
+        sum += sum_gpu[i];
+    }
+
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(start);
     cudaEventSynchronize(stop);
@@ -90,16 +103,8 @@ int sumOfSquares_gpu(int* data, int DATA_SIZE) {
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
 
-    int sum_gpu[MAX_THREAD];
 
-    cudaMemcpy(&sum_gpu, result, sizeof(int) * MAX_THREAD, cudaMemcpyDeviceToHost);
-
-    int sum = 0;
-    for (int i=0; i<MAX_THREAD; i++) {
-        sum += sum_gpu[i];
-    }
     std::cout << "GPU time: " <<  elapsedTime << std::endl;
-
     cudaFree(gpudata);
     cudaFree(result);
 
