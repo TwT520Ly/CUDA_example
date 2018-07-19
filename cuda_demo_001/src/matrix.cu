@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
-#define MAX_THREAD 64
+#define MAX_THREAD 512
 
 __global__ void add(int a, int b, int *c) {
     *c = a + b;
@@ -57,10 +57,9 @@ bool initCUDA() {
 __global__ static void sumOfSquares(int* num, int* result, int DATA_SIZE) {
     // 获取线程编号
     const int tid = threadIdx.x;
-    const int size = DATA_SIZE / MAX_THREAD;
 
     int sum = 0;
-    for (int i=tid * size; i<(tid + 1) * size; i++) {
+    for (int i=tid; i< DATA_SIZE; i+=MAX_THREAD) {
         sum += num[i] * num[i] * num[i];
     }
     result[tid] = sum;
