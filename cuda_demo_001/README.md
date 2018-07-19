@@ -14,7 +14,7 @@
 对于在显卡执行的函数，不能有返回值，因此要通过指针的方式进行传递。
 
 ## 4 测试时间
-CLOCKS_PER_SEC是系统一秒钟的时钟频率，clock_t是长整型类型。使用clock函数进行时间测试，但是需要除以CPU与GPU的时钟频率才可以得到大致的时间。
+CLOCKS_PER_SEC是系统一秒钟的时钟频率，clock_t是长整型类型。使用clock函数进行时间测试，但是需要除以CPU与GPU的时钟频率才可以得到大致的时间。在进行时间测试的时候，CPU使用clock测试是没有问题的，但是GPU使用clock出现了负值的情况。在kernel占用时间较小的时候，不会出现该问题，但是只要占用时间长一点，就会出错。将clock_t类型换成unsigned long long类型就没有问题了。怀疑是溢出的问题，在Linux系统下面出现了溢出时间数据范围的bug。
 
 ## 5 设备属性
 使用cudaGetDeviceProperties可以获取到设备的一个属性集合。返回值cudaDeviceProp是一个结构体类型。属性clockRate单位是千兆赫兹。
