@@ -3,9 +3,15 @@
 using namespace std;
 
 int main() {
-    cout << 1 << endl;
+    // test the function -- add
     cout << add(1, 2) << endl;
-    initCUDA();
+    // init the cuda
+    if (!initCUDA()) {
+       return 0;
+    }
+
+    printf("CUDA initialized.\n");
+
     return 0;
 }
 

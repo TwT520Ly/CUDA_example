@@ -9,5 +9,4 @@ int add(int a, int b);
 
 bool initCUDA();
 
-
 #endif
