@@ -9,4 +9,5 @@ int add(int a, int b);
 
 bool initCUDA();
 
+int sumOfSquares(int* data, int DATA_SIZE);
 #endif

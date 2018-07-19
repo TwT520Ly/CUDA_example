@@ -36,7 +36,8 @@ bool initCUDA() {
     for (i=0; i<count; i++) {
         cudaDeviceProp prop;
         if (cudaGetDeviceProperties(&prop, i) == cudaSuccess) {
-
+            // std::cout << prop.multiProcessorCount << std::endl;
+            // std::cout << prop.name << std::endl;
             if (prop.major >= 1) {
                 break;
             }
@@ -47,5 +48,34 @@ bool initCUDA() {
         fprintf(stderr, "There is no device supporting CUDA 1.x. \n");
         return false;
     }
+    return true;
+}
 
+
+__global__ static void sumOfSquares(int* num, int* result, int DATA_SIZE) {
+    int sum = 0;
+    for (int i=0; i<DATA_SIZE; i++) {
+        sum += num[i] * num[i] * num[i];
+    }
+
+    *result = sum;
+}
+
+int sumOfSquares(int* data, int DATA_SIZE) {
+    int* gpudata, *result;
+
+    cudaMalloc((void**)&gpudata, sizeof(int) * DATA_SIZE);
+    cudaMalloc((void**)&result, sizeof(int));
+
+    cudaMemcpy(gpudata, data, sizeof(int) * DATA_SIZE, cudaMemcpyHostToDevice);
+
+    sumOfSquares<<<1, 1, 0>>>(gpudata, result, DATA_SIZE);
+
+    int sum_gpu;
+    cudaMemcpy(&sum_gpu, result, sizeof(int), cudaMemcpyDeviceToHost);
+
+    cudaFree(gpudata);
+    cudaFree(result);
+
+    return sum_gpu;
 }
