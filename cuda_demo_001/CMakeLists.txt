@@ -8,5 +8,5 @@ file(GLOB_RECURSE TEST_HEAD ${CMAKE_CURRENT_LIST_DIR}/src/.h ${CMAKE_CURRENT_LIS
 file(GLOB TEST_SRC ${CMAKE_CURRENT_LIST_DIR}/src/*.cpp ${CMAKE_CURRENT_LIST_DIR}/src/*.cu)
 set(CUDA_NVCC_FLAGS "-g -G")
 
-cuda_add_executable(Test ${TEST_SRC} ${TEST_HEAD})
+cuda_add_executable(Test1 ${TEST_SRC} ${TEST_HEAD})
 

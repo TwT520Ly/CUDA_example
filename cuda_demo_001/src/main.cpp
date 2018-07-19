@@ -11,7 +11,7 @@ const int DATA_SIZE = 1048576;
 
 void generateNumbers(int* number, int size) {
     for (int i=0; i<size; i++) {
-        number[i] = rand() % 10;
+        number[i] = i % 5;
     }
 }
 int main() {
@@ -31,6 +31,7 @@ int main() {
     sum_gpu = sumOfSquares_gpu(data, DATA_SIZE);
     std::cout << "GPU sum: " << sum_gpu << std::endl;
     std::cout << "***************" << std::endl;
+
     // 使用CPU进行测试
     int sum_cpu = 0;
     sum_cpu = sumOfSquares_cpu(data, DATA_SIZE);

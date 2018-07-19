@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#define MAX_THREAD 64
 
 __global__ void add(int a, int b, int *c) {
     *c = a + b;
@@ -53,43 +54,57 @@ bool initCUDA() {
 }
 
 
-__global__ static void sumOfSquares(int* num, int* result, int DATA_SIZE, clock_t* time) {
+__global__ static void sumOfSquares(int* num, int* result, int DATA_SIZE) {
+    // 获取线程编号
+    const int tid = threadIdx.x;
+    const int size = DATA_SIZE / MAX_THREAD;
+
     int sum = 0;
-    clock_t start_gpu = clock();
-    for (int i=0; i<DATA_SIZE; i++) {
+    for (int i=tid * size; i<(tid + 1) * size; i++) {
         sum += num[i] * num[i] * num[i];
     }
-    clock_t end_gpu = clock();
-    *result = sum;
-    *time = end_gpu - start_gpu;
+    result[tid] = sum;
 }
 
 int sumOfSquares_gpu(int* data, int DATA_SIZE) {
     int* gpudata;
     int* result;
-    clock_t* time;
 
     cudaMalloc((void**)&gpudata, sizeof(int) * DATA_SIZE);
-    cudaMalloc((void**)&result, sizeof(int));
-    cudaMalloc((void**)&time, sizeof(clock_t));
+    cudaMalloc((void**)&result, sizeof(int) * MAX_THREAD);
 
     cudaMemcpy(gpudata, data, sizeof(int) * DATA_SIZE, cudaMemcpyHostToDevice);
 
-    sumOfSquares<<<1, 1, 0>>>(gpudata, result, DATA_SIZE, time);
+    // test time
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 
-    int sum_gpu;
-    clock_t time_gpu;
+    cudaEventRecord(start, 0);
+    sumOfSquares<<<1, MAX_THREAD, 0>>>(gpudata, result, DATA_SIZE);
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(start);
+    cudaEventSynchronize(stop);
 
-    cudaMemcpy(&sum_gpu, result, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&time_gpu, time, sizeof(clock_t), cudaMemcpyDeviceToHost);
-    // clockRate: 1582000 kHZ
-    std::cout << "GPU time: " << (double)(time_gpu) / (1582000 * 1000.0) << std::endl;
+    float elapsedTime;
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
+    int sum_gpu[MAX_THREAD];
+
+    cudaMemcpy(&sum_gpu, result, sizeof(int) * MAX_THREAD, cudaMemcpyDeviceToHost);
+
+    int sum = 0;
+    for (int i=0; i<MAX_THREAD; i++) {
+        sum += sum_gpu[i];
+    }
+    std::cout << "GPU time: " <<  elapsedTime << std::endl;
 
     cudaFree(gpudata);
     cudaFree(result);
-    cudaFree(time);
 
-    return sum_gpu;
+    return sum;
 }
 
 int sumOfSquares_cpu(int* data, int DATA_SIZE) {
@@ -101,6 +116,6 @@ int sumOfSquares_cpu(int* data, int DATA_SIZE) {
 
     clock_t end_cpu = clock();
 
-    std::cout << "CPU time: " << (double)(end_cpu - start_cpu) / (CLOCKS_PER_SEC ) << std::endl;
+    std::cout << "CPU time: " << (double)(end_cpu - start_cpu)* 1000.0 / (CLOCKS_PER_SEC) << std::endl;
     return sum_cpu;
 }

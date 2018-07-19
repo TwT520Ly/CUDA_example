@@ -18,3 +18,27 @@ CLOCKS_PER_SEC是系统一秒钟的时钟频率，clock_t是长整型类型。�
 
 ## 5 设备属性
 使用cudaGetDeviceProperties可以获取到设备的一个属性集合。返回值cudaDeviceProp是一个结构体类型。属性clockRate单位是千兆赫兹。
+
+## 6 并行计算
+
+数组大小：1048576
+
+GPU simple thread: 1250.25 ms
+CPU: 2.5 ms
+
+对于多个线程，需要调用多个核函数，因此需要在kernel中获取threadIdx进行标记。最后获取到线程数个结果，在CPU端进行累加。
+
+GPU 64 threads: 26.29 ms
+Acceleration ratio: 47.55
+
+GPU 128 threads: 12.88 ms
+Acceleration ratio: 97.07
+
+GPU 512 threads: 3.35 ms
+Acceleration ratio: 373.20
+
+GPU 1024 threads: 2.49 ms
+Acceleration ratio: 502.11
+
+但是如果threads>1024，结果就会错误。
+可以看到随着线程数的增加，并不会完全线性的提速，因此还需要更多的细节改进。
