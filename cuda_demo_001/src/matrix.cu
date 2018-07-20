@@ -3,8 +3,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
-#define MAX_THREAD 512
-#define MAX_BLOCK 64
+#include <cuda_runtime.h>
+#define MAX_THREAD 1024
+#define MAX_BLOCK 32
 
 __global__ void add(int a, int b, int *c) {
     *c = a + b;
@@ -60,11 +61,22 @@ __global__ static void sumOfSquares(int* num, int* result, int DATA_SIZE) {
     const int tid = threadIdx.x;
     const int bid = blockIdx.x;
 
-    int sum = 0;
+    extern __shared__ int shared[];
+
+    shared[tid] = 0;
+
+
     for (int i=bid * MAX_THREAD + tid; i< DATA_SIZE; i += MAX_THREAD * MAX_BLOCK) {
-        sum += num[i] * num[i] * num[i];
+        shared[tid] += num[i] * num[i] * num[i];
     }
-    result[tid + bid * MAX_THREAD] = sum;
+    //result[tid + bid * MAX_THREAD] = sum;
+    __syncthreads();
+    if (tid == 0) {
+        for (int i =0; i< MAX_THREAD; i++) {
+            shared[0] += shared[i];
+        }
+        result[bid] = shared[0];
+    }
 }
 
 int sumOfSquares_gpu(int* data, int DATA_SIZE) {
@@ -83,14 +95,14 @@ int sumOfSquares_gpu(int* data, int DATA_SIZE) {
 
     cudaEventRecord(start, 0);
 
-    sumOfSquares<<<MAX_BLOCK, MAX_THREAD, 0>>>(gpudata, result, DATA_SIZE);
+    sumOfSquares<<<MAX_BLOCK, MAX_THREAD, MAX_THREAD * sizeof(int)>>>(gpudata, result, DATA_SIZE);
 
-    int sum_gpu[MAX_THREAD * MAX_BLOCK];
+    int sum_gpu[MAX_BLOCK];
 
-    cudaMemcpy(&sum_gpu, result, sizeof(int) * MAX_THREAD * MAX_BLOCK, cudaMemcpyDeviceToHost);
+    cudaMemcpy(&sum_gpu, result, sizeof(int) * MAX_BLOCK, cudaMemcpyDeviceToHost);
 
     int sum = 0;
-    for (int i=0; i<MAX_THREAD * MAX_BLOCK; i++) {
+    for (int i=0; i< MAX_BLOCK; i++) {
         sum += sum_gpu[i];
     }
 
@@ -107,7 +119,7 @@ int sumOfSquares_gpu(int* data, int DATA_SIZE) {
     std::cout << "GPU time: " <<  elapsedTime << std::endl;
     cudaFree(gpudata);
     cudaFree(result);
-
+    
     return sum;
 }
 
